@@ -8,6 +8,7 @@ from datetime import datetime
 import htmlentitydefs
 from HTMLParser import HTMLParser
 import os
+import re
 import sys
 import urllib2
 
@@ -70,7 +71,12 @@ class EskaRockHitsHTMLParser(HTMLParser):
                 self._inside_hits_table = False
         elif self._inside_hits_table and tag == "h4":
             self._inside_hit_name = False
-            self._hits.append("".join(self._current_hit).strip())
+            # Glue together text matched by handle_data, handle_charref and
+            # handle_entityref, and strip extra whitespace.
+            hit = "".join(self._current_hit).strip()
+            # Replace mutiple spaces by a single space: "My  hit" -> "My hit"
+            hit = re.sub("\s{1,}", " ", hit)
+            self._hits.append(hit)
 
     def handle_data(self, data):
         if self._inside_hits_table and self._inside_hit_name:
