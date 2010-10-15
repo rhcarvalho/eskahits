@@ -97,31 +97,8 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             char = htmlentitydefs.entitydefs.get(name, "")
             self._current_hit.append(char)
 
-# timeit results
-# repeat [time in seconds]
-# 23 [12.856124820919772, 10.895285955552382, 9.3024210784356]
-# 50 [18.995205638917597, 17.73981352251268, 16.42225731626646]
-# 320 [102.42998471273869, 107.60854448272762, 108.65786591803024]
-def top_hits(count=10, max_pages=32):
-    """Generate lazy sequence of top hits."""
-    next_page = 0
-    while count > 0:
-        next_page += 1
-        if next_page > max_pages:
-            break
-        parser = EskaRockHitsFetcher(next_page)
-        parser.run()
-        hits = parser.hits
-        for hit in hits[:count]:
-            yield hit
-        count -= len(hits)
 
-# timeit results
-# repeat [time in seconds]
-# 23 [4.351284881378983, 3.558788820220083, 4.224391989524346]
-# 50 [4.3671874518808504, 4.418607959969794, 4.7456087619042915]
-# 320 [15.237602967280825, 14.143372584187725, 15.102017524301328]
-def top_hits_p(count=10, max_pages=32):
+def top_hits(count=10, max_pages=40):
     """Generate lazy sequence of top hits.
     
     Runs parallel threads to download multiple pages at a time.
@@ -143,22 +120,25 @@ def top_hits_p(count=10, max_pages=32):
         count -= len(hits)
 
 
-def print_top_hits(count=10, max_pages=32):
+def print_top_hits(count=10, max_pages=40):
     """Print top hits as they are fetched from EskaRock.pl."""
     print "# Top %d hits from EskaRock.pl" % count
     print "# Retrieved %s" % datetime.now().strftime("%Y/%m/%d %H:%M:%S")
     print
     counting_width = len(str(count))
-    for i, hit in enumerate(top_hits_p(count, max_pages)):
+    for i, hit in enumerate(top_hits(count, max_pages)):
         print "%*d. %s" % (counting_width, i + 1, hit)
+    return i + 1
 
 
 def main():
     if sys.argv[1:] and sys.argv[1].isdigit():
-        print_top_hits(int(sys.argv[1]))
+        t0 = datetime.now()
+        count = print_top_hits(int(sys.argv[1]))
+        print
+        print "# Fetched %d hits in %.2f seconds." % (count, (datetime.now() - t0).total_seconds())
     else:
         print __doc__
 
 if __name__ == "__main__":
-    from timeit import repeat
-    print repeat("main()", "from __main__ import main", repeat=3, number=1)
+    main()
