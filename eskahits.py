@@ -2,7 +2,7 @@
 #
 # Find hits from EskaRock.pl
 # URL example:
-# http://www.eskarock.pl/index.php?page=new_hits_eska_rock&offset=10&offset=20
+# http://www.eskarock.pl/index.php?page=new_hits_eska_rock&offset=10
 
 from datetime import datetime
 import htmlentitydefs
@@ -36,7 +36,7 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
         """
         Thread.__init__(self)
         HTMLParser.__init__(self)
-        
+
         offset = (page_index - 1) * self.hits_per_page
         self.url = "%s&offset=%d" % (self.base_url, offset)
 
@@ -98,37 +98,47 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             self._current_hit.append(char)
 
 
-def top_hits(count=10, max_pages=40):
+def top_hits(count=10):
     """Generate lazy sequence of top hits.
-    
+
     Runs parallel threads to download multiple pages at a time.
-    
+
     """
+    max_pages = 40 # limit the number of concurrent threads
     total_pages = ((count - 1) / EskaRockHitsFetcher.hits_per_page) + 1
-    pages = []
-    
-    for page in xrange(1,  total_pages + 1):
-        fetcher_thread = EskaRockHitsFetcher(page)
-        pages.append(fetcher_thread)
-        fetcher_thread.start()
-    
-    for page in pages:
-        page.join()
-        hits = page.hits
-        for hit in hits[:count]:
-            yield hit
-        count -= len(hits)
+
+    for first_page in xrange(1, total_pages, max_pages):
+        pages = []
+        last_page = min(first_page + max_pages - 1, total_pages)
+        for page in xrange(first_page,  last_page + 1):
+            fetcher_thread = EskaRockHitsFetcher(page)
+            # Do NOT wait for thread to terminate when main thread is done
+            fetcher_thread.daemon = True
+            pages.append(fetcher_thread)
+            fetcher_thread.start()
+
+        for page in pages:
+            page.join()
+            hits = page.hits
+            if not hits:
+                # If this page has no hits, assume next pages won't have as well.
+                # Ignore all of the next pages and terminate.
+                return
+            for hit in hits[:count]:
+                yield hit
+            count -= len(hits)
 
 
-def print_top_hits(count=10, max_pages=40):
+def print_top_hits(count=10):
     """Print top hits as they are fetched from EskaRock.pl."""
     print "# Top %d hits from EskaRock.pl" % count
     print "# Retrieved %s" % datetime.now().strftime("%Y/%m/%d %H:%M:%S")
     print
     counting_width = len(str(count))
-    for i, hit in enumerate(top_hits(count, max_pages)):
-        print "%*d. %s" % (counting_width, i + 1, hit)
-    return i + 1
+    i = 0
+    for i, hit in enumerate(top_hits(count), 1):
+        print "%*d. %s" % (counting_width, i, hit)
+    return i
 
 
 def main():
