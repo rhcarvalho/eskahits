@@ -107,10 +107,10 @@ def top_hits(count=10):
     max_pages = 40 # limit the number of concurrent threads
     total_pages = ((count - 1) / EskaRockHitsFetcher.hits_per_page) + 1
 
-    for first_page in xrange(1, total_pages, max_pages):
+    for first_page in xrange(1, total_pages + 1, max_pages):
         pages = []
         last_page = min(first_page + max_pages - 1, total_pages)
-        for page in xrange(first_page,  last_page + 1):
+        for page in xrange(first_page, last_page + 1):
             fetcher_thread = EskaRockHitsFetcher(page)
             # Do NOT wait for thread to terminate when main thread is done
             fetcher_thread.daemon = True
