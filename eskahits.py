@@ -51,8 +51,9 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
 
     def run(self):
         f = urllib2.urlopen(self.url)
+        encoding = f.headers['content-type'].split('charset=')[-1]
         try:
-            self.feed(f.read())
+            self.feed(unicode(f.read(), encoding))
         finally:
             f.close()
 
@@ -78,6 +79,8 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             hit = "".join(self._current_hit).strip()
             # Replace mutiple spaces by a single space: "My  hit" -> "My hit"
             hit = re.sub("\s{1,}", " ", hit)
+            # Encode hit into a UTF-8 bytestream
+            hit = hit.encode("utf-8")
             self.hits.append(hit)
 
     def handle_data(self, data):
