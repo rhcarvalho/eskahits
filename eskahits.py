@@ -12,6 +12,7 @@ import os
 import re
 import sys
 from threading import Thread
+import time
 import urllib2
 
 __doc__ = """Usage:
@@ -147,10 +148,10 @@ def print_top_hits(count=10):
 
 def main():
     if sys.argv[1:] and sys.argv[1].isdigit():
-        t0 = datetime.now()
+        t0 = time.time()
         count = print_top_hits(int(sys.argv[1]))
         print
-        print "# Fetched %d hits in %.2f seconds." % (count, (datetime.now() - t0).total_seconds())
+        print "# Fetched %d hits in %.2f seconds." % (count, time.time() - t0)
     else:
         print __doc__
 
