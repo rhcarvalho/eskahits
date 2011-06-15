@@ -28,7 +28,7 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
     """Parser to fetch top hits from EskaRock.pl."""
 
     base_url = "http://www.eskarock.pl/index.php?page=new_hits_eska_rock"
-    hits_per_page = 10
+    hits_per_page = 20
 
     def __init__(self, page_index):
         """Fetch hits from the given page.
@@ -47,7 +47,7 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
         self._inside_hit_name = False
         self._current_hit = None
 
-        self._inside_hits_table = False
+        self._inside_hits_area = False
         self._hits_table_level = None
         self._table_counter = 0
 
@@ -60,21 +60,21 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             f.close()
 
     def handle_starttag(self, tag, attrs):
-        if tag == "table":
-            if ("class", "zajawka2") in attrs:
-                self._inside_hits_table = True
+        if tag == "div":
+            if ("class", "modultresc") in attrs:
+                self._inside_hits_area = True
                 self._hits_table_level = self._table_counter
             self._table_counter += 1
-        elif self._inside_hits_table and tag == "h4":
+        elif self._inside_hits_area and tag == "h4":
             self._inside_hit_name = True
             self._current_hit = []
 
     def handle_endtag(self, tag):
         if tag == "table":
             self._table_counter -= 1
-            if self._table_counter == self._hits_table_level and self._inside_hits_table:
-                self._inside_hits_table = False
-        elif self._inside_hits_table and tag == "h4":
+            if self._table_counter == self._hits_table_level and self._inside_hits_area:
+                self._inside_hits_area = False
+        elif self._inside_hits_area and tag == "h4":
             self._inside_hit_name = False
             # Glue together text matched by handle_data, handle_charref and
             # handle_entityref, and strip extra whitespace.
@@ -86,11 +86,11 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             self.hits.append(hit)
 
     def handle_data(self, data):
-        if self._inside_hits_table and self._inside_hit_name:
+        if self._inside_hits_area and self._inside_hit_name:
             self._current_hit.append(data)
 
     def handle_charref(self, name):
-        if self._inside_hits_table and self._inside_hit_name:
+        if self._inside_hits_area and self._inside_hit_name:
             if name.isdigit():
                 name = int(name)
             name = htmlentitydefs.codepoint2name.get(name, "")
@@ -98,7 +98,7 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             self._current_hit.append(char)
 
     def handle_entityref(self, name):
-        if self._inside_hits_table and self._inside_hit_name:
+        if self._inside_hits_area and self._inside_hit_name:
             char = htmlentitydefs.entitydefs.get(name, "")
             self._current_hit.append(char)
 
