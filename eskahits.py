@@ -10,6 +10,7 @@ import htmlentitydefs
 from HTMLParser import HTMLParser
 import os
 import re
+from sendmail import sendmail
 import sys
 from threading import Thread
 import time
@@ -146,14 +147,38 @@ def print_top_hits(count=10):
     return i
 
 
+def send_alert_email(subject, text):
+    from_addr = 'eskahits@rodolfocarvalho.net'
+    to_addrs = (
+        'rhcarvalho+eskahits@gmail.com',
+    )
+    sendmail(from_addr, to_addrs, subject, text)
+
+
 def main():
-    if sys.argv[1:] and sys.argv[1].isdigit():
+    try:
+        n = int(sys.argv[1])
+        assert n > 0
+        
         t0 = time.time()
-        count = print_top_hits(int(sys.argv[1]))
+        count = print_top_hits(n)
+        t1 = time.time()
+        
+        if count == 0:
+            send_alert_email("No hits found!",
+                "Check for changes in "
+                "http://www.eskarock.pl/index.php?page=new_hits_eska_rock")
+        
         print
-        print "# Fetched %d hits in %.2f seconds." % (count, time.time() - t0)
-    else:
+        print "# Fetched %d hits in %.2f seconds." % (count, t1 - t0)
+    except (IndexError, ValueError, AssertionError):
         print __doc__
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        import traceback
+        send_alert_email("Unexpected error on Eskahits!",
+                "Details:\n\n%s" % traceback.format_exc())
+        raise
