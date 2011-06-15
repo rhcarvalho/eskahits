@@ -35,7 +35,6 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
         """Fetch hits from the given page.
 
         Inspect the `hits` property which contains the hits found in that page.
-
         """
         Thread.__init__(self)
         HTMLParser.__init__(self)
@@ -48,9 +47,9 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
         self._inside_hit_name = False
         self._current_hit = None
 
-        self._inside_hits_area = False
-        self._hits_table_level = None
-        self._table_counter = 0
+        self._inside_hits_div = False
+        self._hits_div_level = None
+        self._div_counter = 0
 
     def run(self):
         f = urllib2.urlopen(self.url)
@@ -62,20 +61,20 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
 
     def handle_starttag(self, tag, attrs):
         if tag == "div":
-            if ("class", "modultresc") in attrs:
-                self._inside_hits_area = True
-                self._hits_table_level = self._table_counter
-            self._table_counter += 1
-        elif self._inside_hits_area and tag == "h4":
+            if ("id", "kontener3") in attrs:
+                self._inside_hits_div = True
+                self._hits_div_level = self._div_counter
+            self._div_counter += 1
+        elif self._inside_hits_div and tag == "h4":
             self._inside_hit_name = True
             self._current_hit = []
 
     def handle_endtag(self, tag):
-        if tag == "table":
-            self._table_counter -= 1
-            if self._table_counter == self._hits_table_level and self._inside_hits_area:
-                self._inside_hits_area = False
-        elif self._inside_hits_area and tag == "h4":
+        if tag == "div":
+            self._div_counter -= 1
+            if self._div_counter == self._hits_div_level and self._inside_hits_div:
+                self._inside_hits_div = False
+        elif self._inside_hits_div and tag == "h4":
             self._inside_hit_name = False
             # Glue together text matched by handle_data, handle_charref and
             # handle_entityref, and strip extra whitespace.
@@ -87,11 +86,11 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             self.hits.append(hit)
 
     def handle_data(self, data):
-        if self._inside_hits_area and self._inside_hit_name:
+        if self._is_parsing_hit:
             self._current_hit.append(data)
 
     def handle_charref(self, name):
-        if self._inside_hits_area and self._inside_hit_name:
+        if self._is_parsing_hit:
             if name.isdigit():
                 name = int(name)
             name = htmlentitydefs.codepoint2name.get(name, "")
@@ -99,16 +98,19 @@ class EskaRockHitsFetcher(HTMLParser, Thread):
             self._current_hit.append(char)
 
     def handle_entityref(self, name):
-        if self._inside_hits_area and self._inside_hit_name:
+        if self._is_parsing_hit:
             char = htmlentitydefs.entitydefs.get(name, "")
             self._current_hit.append(char)
+
+    @property
+    def _is_parsing_hit(self):
+        return self._inside_hits_div and self._inside_hit_name
 
 
 def top_hits(count=10):
     """Generate lazy sequence of top hits.
 
     Runs parallel threads to download multiple pages at a time.
-
     """
     max_pages = 40 # limit the number of concurrent threads
     total_pages = ((count - 1) / EskaRockHitsFetcher.hits_per_page) + 1
@@ -173,12 +175,11 @@ def main():
         print "# Fetched %d hits in %.2f seconds." % (count, t1 - t0)
     except (IndexError, ValueError, AssertionError):
         print __doc__
-
-if __name__ == "__main__":
-    try:
-        main()
     except:
         import traceback
         send_alert_email("Unexpected error on Eskahits!",
                 "Details:\n\n%s" % traceback.format_exc())
         raise
+
+if __name__ == "__main__":
+    main()
