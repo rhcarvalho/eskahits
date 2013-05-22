@@ -1,0 +1,2 @@
+#Add this to crontab:
+0 12 * * * /home/rodolfo/eskahits/update_hits.sh >> /home/rodolfo/eskahits/cron.log 2>&1
